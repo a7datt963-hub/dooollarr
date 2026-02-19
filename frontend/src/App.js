@@ -1,51 +1,47 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
-
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
-
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
-
-  return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Sales from "./pages/Sales";
+import Inventory from "./pages/Inventory";
+import Dashboard from "./pages/Dashboard";
+import Summary from "./pages/Summary";
+import AccountSelection from "./pages/AccountSelection";
+import Navigation from "./components/Navigation";
+import { Toaster } from "./components/ui/sonner";
 
 function App() {
+  const [accountType, setAccountType] = useState(localStorage.getItem("accountType") || "guest");
+  const [managerCode, setManagerCode] = useState(localStorage.getItem("managerCode") || null);
+  const [employeeName, setEmployeeName] = useState(localStorage.getItem("employeeName") || null);
+  const [employeePermissions, setEmployeePermissions] = useState(localStorage.getItem("employeePermissions") || "sales_only");
+
+  useEffect(() => {
+    if (accountType) localStorage.setItem("accountType", accountType);
+    if (managerCode) localStorage.setItem("managerCode", managerCode);
+    if (employeeName) localStorage.setItem("employeeName", employeeName);
+    if (employeePermissions) localStorage.setItem("employeePermissions", employeePermissions);
+  }, [accountType, managerCode, employeeName, employeePermissions]);
+
+  const handleAccountSetup = (type, code, name = null, permissions = "sales_only") => {
+    setAccountType(type);
+    setManagerCode(code);
+    setEmployeeName(name);
+    setEmployeePermissions(permissions);
+  };
+
   return (
-    <div className="App">
+    <div className="App" dir="rtl">
       <BrowserRouter>
+        {accountType !== "guest" && <Navigation accountType={accountType} managerCode={managerCode} />}
         <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
+          <Route path="/" element={accountType === "guest" ? <Navigate to="/account-selection" /> : <Navigate to="/sales" />} />
+          <Route path="/account-selection" element={<AccountSelection onSetup={handleAccountSetup} />} />
+          <Route path="/sales" element={<Sales accountType={accountType} managerCode={managerCode} employeeName={employeeName} employeePermissions={employeePermissions} />} />
+          <Route path="/inventory" element={<Inventory accountType={accountType} managerCode={managerCode} employeePermissions={employeePermissions} />} />
+          <Route path="/dashboard" element={accountType === "manager" ? <Dashboard managerCode={managerCode} /> : <Navigate to="/sales" />} />
+          <Route path="/summary" element={<Summary accountType={accountType} managerCode={managerCode} onAccountChange={handleAccountSetup} employeePermissions={employeePermissions} />} />
         </Routes>
+        <Toaster position="top-center" dir="rtl" />
       </BrowserRouter>
     </div>
   );
